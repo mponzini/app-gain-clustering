@@ -40,7 +40,7 @@ brain_regions <- c("Frontal", "Parietal", "Temporal", "Limbic", "Occipital",
 
 sub_regions <- c("Type2.L3.Frontal_L", "Type2.L3.Frontal_R", 
                  "Type2.L3.Parietal_L", "Type2.L3.Parietal_R", 
-                 "Type2.L3.Temporal_L"  "Type2.L3.Temporal_R", 
+                 "Type2.L3.Temporal_L", "Type2.L3.Temporal_R", 
                  "Type2.L3.Limbic_L", "Type2.L3.Limbic_R", 
                  "Type2.L3.Occipital_L", "Type2.L3.Occipital_R",
                  "ventricular_csf", "brainstem_cerebellum")
