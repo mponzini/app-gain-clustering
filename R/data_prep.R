@@ -11,6 +11,18 @@ brain_vol_raw <- read.csv(
   )
 )
 
+# names(brain_vol_raw)
+covariates <- c("sex", "app_diagnosis")
+brain_regions <- c("Frontal", "Parietal", "Temporal", "Limbic", "Occipital",
+                   "ventricular_csf", "brainstem_cerebellum")
+
+sub_regions <- c("Type2.L3.Frontal_L", "Type2.L3.Frontal_R", 
+                 "Type2.L3.Parietal_L", "Type2.L3.Parietal_R", 
+                 "Type2.L3.Temporal_L", "Type2.L3.Temporal_R", 
+                 "Type2.L3.Limbic_L", "Type2.L3.Limbic_R", 
+                 "Type2.L3.Occipital_L", "Type2.L3.Occipital_R",
+                 "ventricular_csf", "brainstem_cerebellum")
+
 # process data
 brain_vol <- brain_vol_raw |> 
   dplyr::select(-X) |> 
@@ -33,34 +45,35 @@ brain_vol <- brain_vol_raw |>
                 ventricular_csf, brainstem_cerebellum),
       ~ as.numeric(.x)
     )
+  ) |>
+  # scale regions of interest
+  mutate(
+    across(
+      .cols = any_of(c(sub_regions, brain_regions)),
+      ~ scale(.x) |> as.vector(),
+      .names = "{.col}_scaled"
+    )
   )
 
-# names(brain_vol_raw)
-covariates <- c("sex", "app_diagnosis", "scan_age")
-brain_regions <- c("Frontal", "Parietal", "Temporal", "Limbic", "Occipital",
-                   "ventricular_csf", "brainstem_cerebellum")
-
-sub_regions <- c("Type2.L3.Frontal_L", "Type2.L3.Frontal_R", 
-                 "Type2.L3.Parietal_L", "Type2.L3.Parietal_R", 
-                 "Type2.L3.Temporal_L", "Type2.L3.Temporal_R", 
-                 "Type2.L3.Limbic_L", "Type2.L3.Limbic_R", 
-                 "Type2.L3.Occipital_L", "Type2.L3.Occipital_R",
-                 "ventricular_csf", "brainstem_cerebellum")
-
-brain_use <- c("Frontal", "Parietal", "Temporal", "Occipital")
 
 # kmeans requires data to be in a wide format
-# requires data to be in wide format
 brain_vol_wide <- brain_vol |>
-  dplyr::select(subj_id, visit, all_of(brain_regions)) |>
+  dplyr::select(subj_id, visit, contains("scaled")) |>
   reshape(
     idvar = "subj_id", timevar = "visit", direction = "wide", sep = "_"
   ) |>
+  # filter: select obs with complete brain data
   filter(
-    if_all(.cols = contains(brain_use), ~ !is.na(.x))
+    if_all(.cols = contains("scaled"), ~ !is.na(.x))
   )
 
 
-## NOTE: k-means requires complete data -> impute ##
+## NOTE: k-means requires complete data -> impute? ##
 set.seed(61724)
 # imputation method of choice
+
+
+
+# store vector of analytic brain regions
+scaled_regions <- paste(brain_regions, "_scaled", sep = "")
+scaled_sub_regions <- paste(sub_regions, "_scaled", sep = "")
