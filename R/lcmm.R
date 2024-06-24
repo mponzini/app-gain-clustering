@@ -5,41 +5,52 @@ pacman::p_load(lcmm, ggplot2)
 ## using summed brain region volumes ##
 # fit lcmm with K = 1 to obtain initial values
 lcmm_k1 <- lcmm::multlcmm(
-  Frontal + Parietal + Occipital + Temporal ~ visit,
-  random = ~ visit,
+  Type2.L3.Frontal_L + Type2.L3.Frontal_R + Type2.L3.Parietal_L + 
+    Type2.L3.Parietal_R + Type2.L3.Temporal_L + Type2.L3.Temporal_R + 
+    Type2.L3.Limbic_L + Type2.L3.Limbic_R + Type2.L3.Occipital_L + 
+    Type2.L3.Occipital_R + ventricular_csf + brainstem_cerebellum ~ scan_age,
+  random = ~ scan_age,
   subject = 'subj_id_numeric',
   data = brain_vol,
   randomY = TRUE,
   ng = 1
 )
 
-# # fit lcmm with K = 2:8 to determine optimal number of clusters
-# BIC <- NULL
-# for(kk in 2:8){
-#   fit <- lcmm::multlcmm(
-#     Frontal + Parietal + Occipital + Temporal ~ visit,
-#     mixture = ~ visit,
-#     random = ~ visit,
-#     subject = 'subj_id_numeric',
-#     data = brain_vol,
-#     randomY = TRUE,
-#     ng = kk,
-#     B = lcmm_k1
-#   )
-#   
-#   BIC <- c(BIC, fit$BIC)
-# }
-# 
-# # store number of optimal clusters
-# opt.k <- which.min(BIC) + 1 # opt.k = 5
+# fit lcmm with K = 2:8 to determine optimal number of clusters
+BIC <- NULL
+fit_k2_k8 <- vector(mode = 'list', length = 7)
+for(kk in 2:8){
+  # fit model
+  fit <- lcmm::multlcmm(
+    Type2.L3.Frontal_L + Type2.L3.Frontal_R + Type2.L3.Parietal_L + 
+      Type2.L3.Parietal_R + Type2.L3.Temporal_L + Type2.L3.Temporal_R + 
+      Type2.L3.Limbic_L + Type2.L3.Limbic_R + Type2.L3.Occipital_L + 
+      Type2.L3.Occipital_R + ventricular_csf + brainstem_cerebellum ~ scan_age,
+    mixture = ~ scan_age,
+    random = ~ scan_age,
+    subject = 'subj_id_numeric',
+    data = brain_vol,
+    randomY = TRUE,
+    ng = kk,
+    B = lcmm_k1
+  )
+  # store model and BIC
+  fit_k2_k8[[kk-1]] <- fit
+  BIC <- c(BIC, fit$BIC)
+}
+
+
+plot(BIC)
+# store number of optimal clusters
+opt.k <- which.min(BIC) + 1 # opt.k = 5
 opt.k <- 5
 
 
 # fit final lcmm
 lcmm_opt_k <- lcmm::multlcmm(
-  Frontal + Parietal + Occipital + Temporal ~ visit,
-  mixture = ~ visit,
-  random = ~ visit,
+  Frontal + Parietal + Occipital + Temporal ~ scan_age,
+  mixture = ~ scan_age,
+  random = ~ scan_age,
   subject = 'subj_id_numeric',
   data = brain_vol,
   randomY = TRUE,
@@ -123,7 +134,7 @@ plot_feature <- function(data, y_var, y_lab, legend = "none"){
   ggplot(
     data,
     aes(
-      x = visit,
+      x = scan_age,
       y = .data[[y_var]],
       color = cluster,
       linetype = cluster,
@@ -161,5 +172,3 @@ cowplot::plot_grid(
   nrow = 2,
   rel_heights = c(1, 0.1)
 )
-
-

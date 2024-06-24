@@ -16,16 +16,18 @@ brain_vol <- brain_vol_raw |>
   dplyr::select(-X) |> 
   # remove duplicate rows
   unique() |>
-  # calc brain vol by region
   mutate(
+    # calc brain vol by region
     Frontal = Type2.L3.Frontal_L + Type2.L3.Frontal_R,
     Parietal = Type2.L3.Parietal_L + Type2.L3.Parietal_R,
     Temporal = Type2.L3.Temporal_L + Type2.L3.Temporal_R,
     Limbic = Type2.L3.Limbic_L + Type2.L3.Limbic_R,
     Occipital = Type2.L3.Occipital_L + Type2.L3.Occipital_R,
+    # create numeric subj id
     subj_id_numeric = as.numeric(gsub("-", "", subj_id))
   ) |>
   mutate(
+    # convert to numeric
     across(
       .cols = c(Frontal, Parietal, Temporal, Limbic, Occipital, 
                 ventricular_csf, brainstem_cerebellum),
