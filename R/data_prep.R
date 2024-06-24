@@ -46,3 +46,21 @@ sub_regions <- c("Type2.L3.Frontal_L", "Type2.L3.Frontal_R",
                  "Type2.L3.Limbic_L", "Type2.L3.Limbic_R", 
                  "Type2.L3.Occipital_L", "Type2.L3.Occipital_R",
                  "ventricular_csf", "brainstem_cerebellum")
+
+brain_use <- c("Frontal", "Parietal", "Temporal", "Occipital")
+
+# kmeans requires data to be in a wide format
+# requires data to be in wide format
+brain_vol_wide <- brain_vol |>
+  dplyr::select(subj_id, visit, all_of(brain_regions)) |>
+  reshape(
+    idvar = "subj_id", timevar = "visit", direction = "wide", sep = "_"
+  ) |>
+  filter(
+    if_all(.cols = contains(brain_use), ~ !is.na(.x))
+  )
+
+
+## NOTE: k-means requires complete data -> impute ##
+set.seed(61724)
+# imputation method of choice
