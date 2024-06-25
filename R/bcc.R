@@ -21,7 +21,7 @@ for(k in 2:8){
     ),
     dist = c("gaussian"),
     id = list(
-      brain_vol$subj_id
+      brain_vol$subj_id_numeric
     ),
     time = list(
       brain_vol$scan_age
@@ -42,3 +42,14 @@ for(k in 2:8){
   fit_k2_k8[[k - 1]] <- fit
   alpha.adjust <- c(alpha.adjust, fit$alpha.adjust)
 }
+## Note: inv() matrix singular at k = 5, only evaluated 
+
+# select number of clusters that maximizes mean adjusted adherence 
+plot(alpha.adjust)
+numb.k <- which.max(alpha.adjust) + 1
+
+# save fit_k2_k8
+saveRDS(
+  object = fit_k2_k8,
+  file = "./data/bcc_models.rds"
+)
