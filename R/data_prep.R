@@ -77,3 +77,6 @@ set.seed(61724)
 # store vector of analytic brain regions
 scaled_regions <- paste(brain_regions, "_scaled", sep = "")
 scaled_sub_regions <- paste(sub_regions, "_scaled", sep = "")
+
+## save data
+saveRDS(brain_vol, "./data-ext/brain_vol_long.rds")
