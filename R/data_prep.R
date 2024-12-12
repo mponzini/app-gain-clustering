@@ -7,7 +7,7 @@ brain_vol_raw <- read.csv(
     "S:/MIND/IDDRC Cores/",
     "Core F_Biostatistics Bioinformatics and Research Design (BBRD)/",
     "Nordahl_R01MH10443801/MultivariateModeling/Data/",
-    "longitudinal_clustering_brain_volume_dataset_2024-05-01.csv"
+    "longitudinal_clustering_brain_volume_dataset_2024-09-19.csv"
   )
 )
 
@@ -53,6 +53,15 @@ brain_vol <- brain_vol_raw |>
       ~ scale(.x) |> as.vector(),
       .names = "{.col}_scaled"
     )
+  ) |>
+  ## to tease out total size differences, convert from volume to proportion of total volume ##
+  dplyr::mutate(
+    Total.Volume = rowSums(dplyr::across(.cols = c(Type2.L3.Frontal_L:brainstem_cerebellum))),
+    dplyr::across(
+      .cols = c(Type2.L3.Frontal_L:brainstem_cerebellum),
+      ~ .x / Total.Volume,
+      .names = "{.col}_prop"
+    )
   )
 
 
@@ -67,6 +76,16 @@ brain_vol_wide <- brain_vol |>
     if_all(.cols = contains("scaled"), ~ !is.na(.x))
   )
 
+brain_vol_prop_wide <- brain_vol |>
+  dplyr::select(subj_id, visit, contains("prop")) |>
+  reshape(
+    idvar = "subj_id", timevar = "visit", direction = "wide", sep = "_"
+  ) |>
+  # filter: select obs with complete brain data
+  filter(
+    if_all(.cols = contains("prop"), ~ !is.na(.x))
+  )
+
 
 ## NOTE: k-means requires complete data -> impute? ##
 set.seed(61724)
@@ -77,5 +96,4 @@ set.seed(61724)
 # store vector of analytic brain regions
 scaled_regions <- paste(brain_regions, "_scaled", sep = "")
 scaled_sub_regions <- paste(sub_regions, "_scaled", sep = "")
-
-## testing to see how this works 
+prop_vol_sub_regions <- paste0(sub_regions, "_prop")
