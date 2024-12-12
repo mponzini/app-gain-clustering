@@ -1,8 +1,8 @@
 ## test Bayesian Consensus Clustering
 pacman::p_load(BCClong, ggplot2)
 # source data prep file
-source("./R/data_prep.R")
-
+# source("./R/data_prep.R")
+brain_vol <- readRDS("./data-ext/brain_vol_long_20240919.rds")
 # set seed
 set.seed(61824)
 
@@ -51,5 +51,5 @@ numb.k <- which.max(alpha.adjust) + 1
 # save fit_k2_k8
 saveRDS(
   object = fit_k2_k8,
-  file = "./data/bcc_models.rds"
+  file = "./data-ext/bcc_models.rds"
 )

@@ -7,7 +7,7 @@ brain_vol_raw <- read.csv(
     "S:/MIND/IDDRC Cores/",
     "Core F_Biostatistics Bioinformatics and Research Design (BBRD)/",
     "Nordahl_R01MH10443801/MultivariateModeling/Data/",
-    "longitudinal_clustering_brain_volume_dataset_2024-05-01.csv"
+    "longitudinal_clustering_brain_volume_dataset_2024-09-19.csv"
   )
 )
 
@@ -79,4 +79,4 @@ scaled_regions <- paste(brain_regions, "_scaled", sep = "")
 scaled_sub_regions <- paste(sub_regions, "_scaled", sep = "")
 
 ## save data
-saveRDS(brain_vol, "./data-ext/brain_vol_long.rds")
+saveRDS(brain_vol, "./data-ext/brain_vol_long_20240919.rds")
