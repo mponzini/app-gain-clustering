@@ -1,0 +1,375 @@
+---
+output: 
+  bookdown::html_document2:
+    toc: FALSE
+    number_section: FALSE
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+
+pacman::p_load(dplyr, tibble, tidyr, ggplot2, BCClong, cowplot)
+
+brain_vol <- readRDS("../data-ext/brain_vol_long_20240919.rds")
+bcc_model <- readRDS(file = "../data-ext/bcc_models_k2-4.rds")
+bcc_hemi_model <- readRDS(file = "../data-ext/bcc_models_k2-4_hemispheres.rds")
+```
+
+# Multivariate Longitudinal Clustering of Brain Volumes using Bayesian Consensus Clustering  
+
+Exploration of multivariate longitudinal clustering of brain region volumes using Bayesian Consensus Clustering (BCC). Analysis is conducted using the {BCClong} package (version `r packageVersion('BCClong')`).  
+
+## Background  
+
+Unlike other methods which provide an overall clustering that utilizes information from all features (known as global clustering), 
+the BCC model provides both feature-specific clustering and global clustering. 
+Feature-specific clustering is also known as local clustering as it is based on each feature alone. 
+Global clustering is also known as consensus 
+clustering as it is obtained by integrating information from all features to arrive at a consensus result.  
+
+The BCC model is estimated using an MCMC algorithm,43 and similar to other model-based approaches, individuals
+are assigned to the cluster to which their posterior membership probability is the largest. Missing data are assumed to be
+MAR. In practice, reporting both feature-specific clusterings (L~*ir*~, i = 1, …, N, r = 1, …, R) and global clustering (C~*i*~, i = 1, …, N) is useful in understanding the 
+heterogeneity underlying each feature and the heterogeneity across features. It
+also facilitates the understanding of the added values of the global clustering compared to feature-specific clusterings,
+particularly when the interests are in associating the clusters with a health outcome of interest.
+
+## Analysis using Combined Brain Region Volumes (L + R Hemispheres)
+
+### Determine Number of Clusters  
+
+```{r}
+adjusted_alphas <- lapply(bcc_model, function(x) x$alpha.adjust) |> unlist()
+numb.k <- which.max(adjusted_alphas) + 1
+```
+
+The BCC was fit using scaled brain region volumes summed across hemispheres over time. We evaluated 2 to 4 clusters. The final number of clusters, as determined by the mean adjusted adherence, was `r numb.k`, \@ref(fig:alpha).
+
+```{r alpha, fig.cap="Mean adjusted adherence from BCC models using k = 2 to 4."}
+data.frame(
+  k = seq(2, 4, by = 1),
+  `Adjusted Alpha` = adjusted_alphas,
+  check.names = FALSE
+) |>
+  ggplot2::ggplot() +
+  ggplot2::aes(x = k, y = `Adjusted Alpha`) +
+  ggplot2::geom_point() +
+  ggplot2::labs(x = '*k*', y = 'Mean adjusted adherence') +
+  ggplot2::theme_bw() +
+  ggplot2::theme(
+    axis.title.x = ggtext::element_markdown()
+  )
+```
+
+### Posterior Cluster Probability
+
+```{r}
+dat <- bcc_model[[1]]$dat
+dat1_uq <- dat[[1]][!duplicated(dat[[1]]$id.org, fromLast = TRUE), ]
+dat1_uq$post_prob <- bcc_model[[1]]$postprob
+
+ggplot(dat1_uq, aes(x=factor(cluster.global), y=post_prob)) +
+  geom_boxplot() + 
+  ggtitle("BCClong") +
+  xlab("Clusters") + 
+  ylab("Posterior Cluster Probability") +
+  ylim(c(0,1)) +
+  theme_bw() +
+  theme(legend.position = "none",
+        plot.title = element_text(size = 15, face = "bold"),
+        axis.text=element_text(size=15),
+        axis.title=element_text(size=15),
+        axis.text.x = element_text(angle = 0 ),
+        strip.text.x = element_text(size = 15, angle = 0),
+        strip.text.y = element_text(size = 15,face="bold")
+        )
+```
+
+
+```{r}
+dat.cluster <- data.frame(
+  id=dat1_uq$id.org,
+  cluster.global=dat1_uq$cluster.global)
+
+per <- round(
+  100*table(dat.cluster$cluster.global)/length(dat.cluster$cluster.global),
+  1
+)
+dat.cluster$cluster.global <- cluster.BCC <- factor(
+  dat.cluster$cluster.global,
+  labels =paste("Cluster ",1:numb.k," (",per,"%)",sep="")
+)
+
+dnew <- merge(brain_vol,dat.cluster, by.x='subj_id_numeric', by.y="id")
+```
+
+```{r, warning=FALSE, message=FALSE}
+p1 <- ggplot(data = dnew) +
+  aes(
+    x = scan_age,
+    y = Frontal_scaled,
+    color = cluster.global,
+    linetype = cluster.global,
+    fill = cluster.global
+  ) +
+  geom_smooth(method = 'loess', se = TRUE, span = 2) +
+  theme_bw()
+p2 <- ggplot(data = dnew) +
+  aes(
+    x = scan_age,
+    y = Parietal_scaled,
+    color = cluster.global,
+    linetype = cluster.global,
+    fill = cluster.global
+  ) +
+  geom_smooth(method = 'loess', se = TRUE, span = 2) +
+  theme_bw()
+p3 <- ggplot(data = dnew) +
+  aes(
+    x = scan_age,
+    y = Temporal_scaled,
+    color = cluster.global,
+    linetype = cluster.global,
+    fill = cluster.global
+  ) +
+  geom_smooth(method = 'loess', se = TRUE, span = 2) +
+  theme_bw()
+p4 <- ggplot(data = dnew) +
+  aes(
+    x = scan_age,
+    y = Occipital_scaled,
+    color = cluster.global,
+    linetype = cluster.global,
+    fill = cluster.global
+  ) +
+  geom_smooth(method = 'loess', se = TRUE, span = 2) +
+  theme_bw()
+
+p_legend <- cowplot::get_legend(p1 + theme(legend.direction = 'horizontal'))
+
+cowplot::plot_grid(
+  cowplot::plot_grid(
+    p1 + theme(legend.position = 'none'), p2 + theme(legend.position = 'none'), 
+    p3 + theme(legend.position = 'none'), p4 + theme(legend.position = 'none'),
+    nrow = 2, ncol = 2
+  ),
+  p_legend,
+  nrow = 2,
+  ncol = 1,
+  rel_heights = c(0.8, 0.1)
+)
+```
+
+
+```{r}
+dnew |>
+  dplyr::filter(visit == 1) |>
+  dplyr::select(sex, app_diagnosis, cluster.global) |>
+  gtsummary::tbl_summary(by = cluster.global) |>
+  gtsummary::add_overall()
+
+```
+
+
+
+## Analysis using Brain Region Volumes
+
+### Determine Number of Clusters  
+
+```{r}
+adjusted_alphas <- lapply(bcc_hemi_model, function(x) x$alpha.adjust) |> unlist()
+numb.k <- which.max(adjusted_alphas) + 1
+```
+
+The BCC was fit using scaled brain region volumes summed across hemispheres over time. We evaluated 2 to 4 clusters. The final number of clusters, as determined by the mean adjusted adherence, was `r numb.k`, \@ref(fig:alpha).
+
+```{r alpha2, fig.cap="Mean adjusted adherence from BCC models using k = 2 to 4."}
+data.frame(
+  k = seq(2, 4, by = 1),
+  `Adjusted Alpha` = adjusted_alphas,
+  check.names = FALSE
+) |>
+  ggplot2::ggplot() +
+  ggplot2::aes(x = k, y = `Adjusted Alpha`) +
+  ggplot2::geom_point() +
+  ggplot2::labs(x = '*k*', y = 'Mean adjusted adherence') +
+  ggplot2::theme_bw() +
+  ggplot2::theme(
+    axis.title.x = ggtext::element_markdown()
+  )
+```
+
+### Posterior Cluster Probability
+
+```{r}
+dat <- bcc_hemi_model[[1]]$dat
+dat1_uq <- dat[[1]][!duplicated(dat[[1]]$id.org, fromLast = TRUE), ]
+dat1_uq$post_prob <- bcc_model[[1]]$postprob
+
+ggplot(dat1_uq, aes(x=factor(cluster.global), y=post_prob)) +
+  geom_boxplot() + 
+  ggtitle("BCClong") +
+  xlab("Clusters") + 
+  ylab("Posterior Cluster Probability") +
+  ylim(c(0,1)) +
+  theme_bw() +
+  theme(legend.position = "none",
+        plot.title = element_text(size = 15, face = "bold"),
+        axis.text=element_text(size=15),
+        axis.title=element_text(size=15),
+        axis.text.x = element_text(angle = 0 ),
+        strip.text.x = element_text(size = 15, angle = 0),
+        strip.text.y = element_text(size = 15,face="bold")
+        )
+```
+
+
+```{r}
+dat.cluster <- data.frame(
+  id=dat1_uq$id.org,
+  cluster.global=dat1_uq$cluster.global)
+
+per <- round(
+  100*table(dat.cluster$cluster.global)/length(dat.cluster$cluster.global),
+  1
+)
+dat.cluster$cluster.global <- cluster.BCC <- factor(
+  dat.cluster$cluster.global,
+  labels =paste("Cluster ",1:numb.k," (",per,"%)",sep="")
+)
+
+dnew <- merge(brain_vol,dat.cluster, by.x='subj_id_numeric', by.y="id")
+```
+
+```{r, warning=FALSE, message=FALSE}
+p1 <- ggplot(data = dnew) +
+  aes(
+    x = scan_age,
+    y = Type2.L3.Frontal_L_scaled,
+    color = cluster.global,
+    linetype = cluster.global,
+    fill = cluster.global
+  ) +
+  geom_smooth(method = 'loess', span = 2) +
+  theme_bw()
+p2 <- ggplot(data = dnew) +
+  aes(
+    x = scan_age,
+    y = Type2.L3.Parietal_L_scaled,
+    color = cluster.global,
+    linetype = cluster.global,
+    fill = cluster.global
+  ) +
+  geom_smooth(method = 'loess', span = 2) +
+  theme_bw()
+p3 <- ggplot(data = dnew) +
+  aes(
+    x = scan_age,
+    y = Type2.L3.Temporal_L_scaled,
+    color = cluster.global,
+    linetype = cluster.global,
+    fill = cluster.global
+  ) +
+  geom_smooth(method = 'loess', span = 2) +
+  theme_bw()
+p4 <- ggplot(data = dnew) +
+  aes(
+    x = scan_age,
+    y = Type2.L3.Occipital_L_scaled,
+    color = cluster.global,
+    linetype = cluster.global,
+    fill = cluster.global
+  ) +
+  geom_smooth(method = 'loess', span = 2) +
+  theme_bw()
+
+p_legend <- cowplot::get_legend(p1 + theme(legend.direction = 'horizontal'))
+
+cowplot::plot_grid(
+  cowplot::plot_grid(
+    p1 + theme(legend.position = 'none'), p2 + theme(legend.position = 'none'), 
+    p3 + theme(legend.position = 'none'), p4 + theme(legend.position = 'none'),
+    nrow = 2, ncol = 2
+  ),
+  p_legend,
+  nrow = 2,
+  ncol = 1,
+  rel_heights = c(0.8, 0.1)
+)
+```
+
+```{r, warning=FALSE, message=FALSE}
+p1 <- ggplot(data = dnew) +
+  aes(
+    x = scan_age,
+    y = Type2.L3.Frontal_R_scaled,
+    color = cluster.global,
+    linetype = cluster.global,
+    fill = cluster.global
+  ) +
+  geom_smooth(method = 'loess', se = TRUE, span = 2) +
+  theme_bw()
+p2 <- ggplot(data = dnew) +
+  aes(
+    x = scan_age,
+    y = Type2.L3.Parietal_R_scaled,
+    color = cluster.global,
+    linetype = cluster.global,
+    fill = cluster.global
+  ) +
+  geom_smooth(method = 'loess', se = TRUE, span = 2) +
+  theme_bw()
+p3 <- ggplot(data = dnew) +
+  aes(
+    x = scan_age,
+    y = Type2.L3.Temporal_R_scaled,
+    color = cluster.global,
+    linetype = cluster.global,
+    fill = cluster.global
+  ) +
+  geom_smooth(method = 'loess', se = TRUE, span = 2) +
+  theme_bw()
+p4 <- ggplot(data = dnew) +
+  aes(
+    x = scan_age,
+    y = Type2.L3.Occipital_R_scaled,
+    color = cluster.global,
+    linetype = cluster.global,
+    fill = cluster.global
+  ) +
+  geom_smooth(method = 'loess', se = TRUE, span = 2) +
+  theme_bw()
+
+p_legend <- cowplot::get_legend(p1 + theme(legend.direction = 'horizontal'))
+
+cowplot::plot_grid(
+  cowplot::plot_grid(
+    p1 + theme(legend.position = 'none'), p2 + theme(legend.position = 'none'), 
+    p3 + theme(legend.position = 'none'), p4 + theme(legend.position = 'none'),
+    nrow = 2, ncol = 2
+  ),
+  p_legend,
+  nrow = 2,
+  ncol = 1,
+  rel_heights = c(0.8, 0.1)
+)
+```
+
+
+```{r}
+dnew |>
+  dplyr::filter(visit == 1) |>
+  dplyr::select(sex, app_diagnosis, cluster.global) |>
+  gtsummary::tbl_summary(by = cluster.global) |>
+  gtsummary::add_overall()
+
+```
+
+```{r}
+dnew |>
+  dplyr::select(sex, visit, app_diagnosis, cluster.global) |>
+  gtsummary::tbl_summary(by = cluster.global) |>
+  gtsummary::add_overall()
+```
