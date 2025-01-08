@@ -71,11 +71,19 @@ brain_vol <- brain_vol_raw |>
     )
   ) |>
   ## to tease out total size differences, convert from volume to proportion of total volume ##
+  ## update: convert volume to proportion of total hemisphere volume ##
   dplyr::mutate(
-    Total.Volume = rowSums(dplyr::across(.cols = c(Type2.L3.Frontal_L:brainstem_cerebellum))),
+    # Total.Volume = rowSums(dplyr::across(.cols = c(Type2.L3.Frontal_L:brainstem_cerebellum))),
     dplyr::across(
-      .cols = c(Type2.L3.Frontal_L:brainstem_cerebellum),
-      ~ .x / Total.Volume,
+      .cols = c(Type2.L3.Frontal_L, Type2.L3.Parietal_L, Type2.L3.Occipital_L,
+                Type2.L3.Temporal_L,Type2.L3.Limbic_L),
+      ~ .x / mori_total_l1_hemisphere_l,
+      .names = "{.col}_prop"
+    ),
+    dplyr::across(
+      .cols = c(Type2.L3.Frontal_R, Type2.L3.Parietal_R, Type2.L3.Occipital_R,
+                Type2.L3.Temporal_R,Type2.L3.Limbic_R),
+      ~ .x / mori_total_l1_hemisphere_r,
       .names = "{.col}_prop"
     )
   )
@@ -116,3 +124,5 @@ prop_vol_sub_regions <- paste0(sub_regions, "_prop")
 
 ## save data
 saveRDS(brain_vol, "./data-ext/brain_vol_long_20241219.rds")
+saveRDS(brain_vol_wide, "./data-ext/brain_vol_wide_20241219.rds")
+saveRDS(brain_vol_prop_wide, "./data-ext/brain_vol_prop_wide_20241219.rds")
