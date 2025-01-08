@@ -7,9 +7,34 @@ brain_vol_raw <- read.csv(
     "S:/MIND/IDDRC Cores/",
     "Core F_Biostatistics Bioinformatics and Research Design (BBRD)/",
     "Nordahl_R01MH10443801/MultivariateModeling/Data/",
-    "longitudinal_clustering_brain_volume_dataset_2024-09-19.csv"
+    "longitudinal_clustering_brain_volume_dataset_2024-12-19.csv"
   )
 )
+
+
+brain_vol_raw <- brain_vol_raw |>
+  # dplyr::select(subj_id, visit, sex, app_diagnosis, scan_age, 
+  #               scan_scanner_system, scan_head_coil, 
+  #               mori_total_l3_frontal_l, mori_total_l3_frontal_r, 
+  #               mori_total_l3_parietal_l, mori_total_l3_parietal_r,
+  #               mori_total_l3_temporal_l, mori_total_l3_temporal_r,
+  #               mori_total_l3_limbic_l, mori_total_l3_limbic_r,
+  #               mori_total_l3_occipital_l, mori_total_l3_occipital_r,
+  #               ventricular_csf, brainstem_cerebellum) |>
+  dplyr::arrange(subj_id, visit) |>
+  # rename variables to match previous version
+  dplyr::rename(
+    Type2.L3.Frontal_L = mori_total_l3_frontal_l, 
+    Type2.L3.Frontal_R = mori_total_l3_frontal_r, 
+    Type2.L3.Parietal_L = mori_total_l3_parietal_l, 
+    Type2.L3.Parietal_R = mori_total_l3_parietal_r,
+    Type2.L3.Temporal_L = mori_total_l3_temporal_l, 
+    Type2.L3.Temporal_R = mori_total_l3_temporal_r,
+    Type2.L3.Limbic_L = mori_total_l3_limbic_l, 
+    Type2.L3.Limbic_R = mori_total_l3_limbic_r,
+    Type2.L3.Occipital_L = mori_total_l3_occipital_l, 
+    Type2.L3.Occipital_R = mori_total_l3_occipital_r
+  )
 
 # names(brain_vol_raw)
 covariates <- c("sex", "app_diagnosis")
@@ -25,7 +50,6 @@ sub_regions <- c("Type2.L3.Frontal_L", "Type2.L3.Frontal_R",
 
 # process data
 brain_vol <- brain_vol_raw |> 
-  dplyr::select(-X) |> 
   # remove duplicate rows
   unique() |>
   mutate(
@@ -37,14 +61,6 @@ brain_vol <- brain_vol_raw |>
     Occipital = Type2.L3.Occipital_L + Type2.L3.Occipital_R,
     # create numeric subj id
     subj_id_numeric = as.numeric(gsub("-", "", subj_id))
-  ) |>
-  mutate(
-    # convert to numeric
-    across(
-      .cols = c(Frontal, Parietal, Temporal, Limbic, Occipital, 
-                ventricular_csf, brainstem_cerebellum),
-      ~ as.numeric(.x)
-    )
   ) |>
   # scale regions of interest
   mutate(
