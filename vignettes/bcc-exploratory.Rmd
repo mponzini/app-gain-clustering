@@ -1,0 +1,135 @@
+---
+title: "DRAFT -- TECHNICAL MEMORANDUM"
+subtitle: "<b>TO: </b> Christine Nordahl, Olivia Surgent, Andy Dakopolos <br> <b> FROM: </b> Matt Ponzini, Sandy Taylor <br> <b> SUBJECT:</b> APP/GAIN Multivariate Longitudinal Clustering <br> <b>DATE:</b> `r paste0(' ', Sys.Date())`"
+output: 
+  bookdown::html_document2:
+    number_sections: TRUE
+    toc: TRUE
+    toc_float: TRUE
+    toc_depth: 3
+---
+
+<style type="text/css">
+
+h1.title {
+  font-size: 24px;
+  font-weight: bolder;
+}
+
+h1 { /* Header 1 */
+  font-size: 16px;
+  font-weight: bold;
+}
+
+h2 { /* Header 2 */
+  font-size: 14px;
+  font-weight: bold;
+}
+
+h3 { /* Header 3 */
+  font-size: 13px;
+  font-weight: bold;
+}
+
+h3.subtitle { /* Header 3 Subtitle */
+  font-size: 20px;
+  font-weight: normal;
+  line-height: 150%;
+}
+
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(fig.width=12, fig.height=8,
+                      echo=FALSE, warning=FALSE, message=FALSE)
+
+# load packages
+pacman::p_load(kml3d, ggplot2)
+
+# update 'asis' chunk to allow inline code
+knitr::knit_engines$set(asis = function(options) {
+  if (options$echo && options$eval) knitr::knit_child(text = options$code)
+})
+  
+
+internal <- FALSE
+```
+
+<hr style="height:1px;color:black;background-color:black">
+
+```{r sysinfo, include=internal}
+# displays R version, platform, base packages, attached packages, and packages
+# loaded via a namespace
+sessionInfo()
+```
+
+# STUDY DESCRIPTION/OBJECTIVE
+
+Explore the use of Bayesian Consensus Clustering multivariate longitudinal clustering of brain region volumes in APP/GAIN participants.
+
+
+# DATA PROCESSING
+
+```{r data-import-processing, include=internal}
+# if data import file(s) is (are) large, consider caching the data
+#   see https://bookdown.org/yihui/rmarkdown-cookbook/cache.html for more 
+#   information
+
+source("../R/data_prep.R")
+```
+
+-   Composite volumes were created for each region by adding the two hemispheres together.  
+-   Brain regions were centered and scaled.  
+-   Data were reduced to complete cases.
+
+<b>Note:</b> K-means requires complete cases for a record to be used in the algorithm. Missing values in brain region volumes will need to be imputed if we want our sample size to increase from `r nrow(brain_vol_wide)` back to `r length(unique(brain_vol_raw$subj_id))`.
+
+# STATISTICAL ANALYSIS
+
+Explore the longitudinal clustering of brain region volumes using BCC clustering (`BCClong::BCC.multi`). Analysis was conducted using sub-region, as well as composite region, volumes.
+
+<b>Issues:</b>
+<ul>
+  <li>The model runs into a singular matrix at k=7.</li>
+  <li>Can run with random initial cluster assignment, but receive an error with `mixAK` initial membership.</li>
+</ul>
+
+```{r data-analysis, include=internal}
+# if analysis is computationally intensive there are a few options.
+#   1) run analysis and save all results to load here
+#   2) run analysis here and set chunk option cache=TRUE. A cached chunk will
+#      automatically load output and objects from a previous run.
+#         see https://bookdown.org/yihui/rmarkdown-cookbook/cache.html for more 
+#         information
+bcc_k <- readRDS("./data/bcc_models.rds")
+
+alpha <- lapply(bcc_k, function(x) x$alpha.adjust) |> unlist()
+k <- which.max(alpha) + 1
+
+bcc_final <- BCClong::BCC.multi(
+    mydat = list(
+      brain_vol$Frontal_scaled,
+      brain_vol$Parietal_scaled,
+      brain_vol$Temporal_scaled,
+      brain_vol$Occipital_scaled
+    ),
+    dist = c("gaussian"),
+    id = list(
+      brain_vol$subj_id_numeric
+    ),
+    time = list(
+      brain_vol$scan_age
+    ),
+    formula = list(
+      y ~ time + (1|id)
+    ),
+    num.cluster = k,
+    initial.cluster.membership = "random",
+    center = 0,
+    burn.in = 2000,
+    thin = 10,
+    per = 1000,
+    max.iter = 12000
+  )
+```
+

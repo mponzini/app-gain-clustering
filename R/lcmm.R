@@ -2,7 +2,7 @@
 pacman::p_load(lcmm, ggplot2)
 
 
-## using summed brain region volumes ##
+# using all scaled brain regions #
 # fit lcmm with K = 1 to obtain initial values
 lcmm_k1 <- lcmm::multlcmm(
   Type2.L3.Frontal_L + Type2.L3.Frontal_R + Type2.L3.Parietal_L + 
