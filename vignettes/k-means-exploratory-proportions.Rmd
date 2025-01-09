@@ -75,7 +75,14 @@ Explore the use of K-Means multivariate longitudinal clustering of brain region 
 #   see https://bookdown.org/yihui/rmarkdown-cookbook/cache.html for more 
 #   information
 
-source("../R/data_prep.R")
+# source("../R/data_prep.R")
+brain_vol_raw <- readRDS("../data-ext/brain_vol_raw_20241219.rds")
+brain_vol <- readRDS("../data-ext/brain_vol_long_20241219.rds")
+brain_vol_wide <- readRDS("../data-ext/brain_vol_prop_wide_20241219.rds")
+
+prop_vol_regions <- readRDS("../data-ext/prop_vol_regions.rds")
+prop_vol_sub_regions <- readRDS("../data-ext/prop_vol_sub_regions.rds")
+
 source("../R/plot_kmean_feature.R")
 ```
 
@@ -104,14 +111,14 @@ kmean_sub <- kml3d::cld3d(
   idAll = brain_vol_wide$subj_id,
   time = c(1, 2, 3),
   timeInData = list(
-    Frontal_L = c(2, 26, 14),
-    Parietal_L = c(4, 28, 16),
-    Temproal_L = c(6, 30, 18),
-    Occipital_L = c(10, 34, 22),
-    Frontal_R = c(3, 27, 15),
-    Parietal_R = c(5, 29, 17),
-    Temproal_R = c(7, 31, 19),
-    Occipital_R = c(11, 35, 23)
+    Frontal_L = c(2, 32, 17),
+    Parietal_L = c(3, 33, 18),
+    Temproal_L = c(5, 35, 20),
+    Occipital_L = c(4, 34, 19),
+    Frontal_R = c(7, 37, 22),
+    Parietal_R = c(8, 38, 23),
+    Temproal_R = c(10, 40, 25),
+    Occipital_R = c(9, 39, 24)
   ),
   varNames = prop_vol_sub_regions[c(1, 3, 5, 9, 2, 4, 6, 10)]
 )
@@ -171,7 +178,7 @@ sub_clusters_kmeans <- kml::getClusters(kmean_sub, numb_k_sub) |>
 # process cluster assignment and merge with data
 perc_sub <- paste0(
   round(
-    100 * table(sub_clusters_kmeans) / length(unique(brain_vol_prop_wide$subj_id)),
+    100 * table(sub_clusters_kmeans) / length(unique(brain_vol_wide$subj_id)),
     1
   ),
   "%"
@@ -184,7 +191,7 @@ sub_clusters_kmeans <- factor(
 
 
 dat_sub <- data.frame(
-  subj_id = brain_vol_prop_wide$subj_id,
+  subj_id = brain_vol_wide$subj_id,
   cluster = sub_clusters_kmeans
 )
 
@@ -267,7 +274,7 @@ p3_L.kmeans <- plot_kmean_feature(
 )
 p4_L.kmeans <- plot_kmean_feature(
   data = brain_clusters_sub,
-  var = prop_vol_sub_regions[7]
+  var = prop_vol_sub_regions[9]
 )
 kmean_L.legend <- cowplot::get_plot_component(
   p1_L.kmeans, 'guide-box-bottom', return_all = TRUE
@@ -303,7 +310,7 @@ p3_R.kmeans <- plot_kmean_feature(
 )
 p4_R.kmeans <- plot_kmean_feature(
   data = brain_clusters_sub,
-  var = prop_vol_sub_regions[8]
+  var = prop_vol_sub_regions[10]
 )
 kmean_R.legend <- cowplot::get_plot_component(
   p1_R.kmeans, 'guide-box-bottom', return_all = TRUE
