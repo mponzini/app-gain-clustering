@@ -263,19 +263,23 @@ data.frame(
 p1_L.kmeans <- plot_kmean_feature(
   data = brain_clusters_sub,
   var = prop_vol_sub_regions[1]
-)
+) +
+  ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 1))
 p2_L.kmeans <- plot_kmean_feature(
   data = brain_clusters_sub,
   var = prop_vol_sub_regions[3]
-)
+) +
+  ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 1))
 p3_L.kmeans <- plot_kmean_feature(
   data = brain_clusters_sub,
   var = prop_vol_sub_regions[5]
-)
+) +
+  ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 1))
 p4_L.kmeans <- plot_kmean_feature(
   data = brain_clusters_sub,
   var = prop_vol_sub_regions[9]
-)
+) +
+  ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 1))
 kmean_L.legend <- cowplot::get_plot_component(
   p1_L.kmeans, 'guide-box-bottom', return_all = TRUE
 )
@@ -299,19 +303,23 @@ cowplot::plot_grid(
 p1_R.kmeans <- plot_kmean_feature(
   data = brain_clusters_sub,
   var = prop_vol_sub_regions[2]
-)
+) +
+  ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 1))
 p2_R.kmeans <- plot_kmean_feature(
   data = brain_clusters_sub,
   var = prop_vol_sub_regions[4]
-)
+) +
+  ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 1))
 p3_R.kmeans <- plot_kmean_feature(
   data = brain_clusters_sub,
   var = prop_vol_sub_regions[6]
-)
+) +
+  ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 1))
 p4_R.kmeans <- plot_kmean_feature(
   data = brain_clusters_sub,
   var = prop_vol_sub_regions[10]
-)
+) +
+  ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = 1))
 kmean_R.legend <- cowplot::get_plot_component(
   p1_R.kmeans, 'guide-box-bottom', return_all = TRUE
 )
