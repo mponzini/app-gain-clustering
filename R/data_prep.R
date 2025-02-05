@@ -116,6 +116,19 @@ brain_vol_prop_wide <- brain_vol |>
     if_all(.cols = contains("prop"), ~ !is.na(.x))
   )
 
+# retain NA to test kml3d imputation methods
+brain_vol_wide_nas <- brain_vol |>
+  dplyr::select(subj_id, visit, contains("scaled")) |>
+  reshape(
+    idvar = "subj_id", timevar = "visit", direction = "wide", sep = "_"
+  )
+
+brain_vol_prop_wide_nas <- brain_vol |>
+  dplyr::select(subj_id, visit, contains("prop")) |>
+  reshape(
+    idvar = "subj_id", timevar = "visit", direction = "wide", sep = "_"
+  ) 
+
 
 ## NOTE: k-means requires complete data -> impute? ##
 set.seed(61724)
@@ -134,6 +147,8 @@ saveRDS(brain_vol_raw, "./data-ext/brain_vol_raw_20241219.rds")
 saveRDS(brain_vol, "./data-ext/brain_vol_long_20241219.rds")
 saveRDS(brain_vol_wide, "./data-ext/brain_vol_wide_20241219.rds")
 saveRDS(brain_vol_prop_wide, "./data-ext/brain_vol_prop_wide_20241219.rds")
+saveRDS(brain_vol_wide_nas, "./data-ext/brain_vol_wide_nas_20241219.rds")
+saveRDS(brain_vol_prop_wide_nas, "./data-ext/brain_vol_prop_wide_nas_20241219.rds")
 
 ## save variable vectors
 saveRDS(prop_vol_regions, "./data-ext/prop_vol_regions.rds")
