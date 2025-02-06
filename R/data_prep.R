@@ -11,6 +11,7 @@ brain_vol_raw <- read.csv(
   )
 )
 
+# brain_vol_raw <- read.csv("longitudinal_clustering_brain_volume_dataset_2024-12-19.csv")
 
 brain_vol_raw <- brain_vol_raw |>
   # dplyr::select(subj_id, visit, sex, app_diagnosis, scan_age, 
@@ -66,7 +67,7 @@ brain_vol <- brain_vol_raw |>
   mutate(
     across(
       .cols = any_of(c(sub_regions, brain_regions)),
-      ~ scale(.x) |> as.vector(),
+      ~ scale(.x) |> as.vector(), # scale by default will center (mean = 0) and scale (sd = 1)
       .names = "{.col}_scaled"
     )
   ) |>
@@ -124,6 +125,11 @@ brain_vol_wide_nas <- brain_vol |>
   )
 
 brain_vol_prop_wide_nas <- brain_vol |>
+  dplyr::mutate(
+    n = dplyr::n(),
+    .by = subj_id
+  ) |>
+  dplyr::filter(n > 1) |>
   dplyr::select(subj_id, visit, contains("prop")) |>
   reshape(
     idvar = "subj_id", timevar = "visit", direction = "wide", sep = "_"
