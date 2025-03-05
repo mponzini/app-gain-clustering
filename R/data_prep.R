@@ -11,6 +11,7 @@ brain_vol_raw <- read.csv(
   )
 )
 
+# brain_vol_raw <- read.csv("longitudinal_clustering_brain_volume_dataset_2024-12-19.csv")
 
 brain_vol_raw <- brain_vol_raw |>
   # dplyr::select(subj_id, visit, sex, app_diagnosis, scan_age, 
@@ -38,15 +39,15 @@ brain_vol_raw <- brain_vol_raw |>
 
 # names(brain_vol_raw)
 covariates <- c("sex", "app_diagnosis")
-brain_regions <- c("Frontal", "Parietal", "Temporal", "Limbic", "Occipital",
-                   "ventricular_csf", "brainstem_cerebellum")
+brain_regions <- c("Frontal", "Parietal", "Temporal", "Limbic", "Occipital")
+                    # , "ventricular_csf", "brainstem_cerebellum")
 
 sub_regions <- c("Type2.L3.Frontal_L", "Type2.L3.Frontal_R", 
                  "Type2.L3.Parietal_L", "Type2.L3.Parietal_R", 
                  "Type2.L3.Temporal_L", "Type2.L3.Temporal_R", 
                  "Type2.L3.Limbic_L", "Type2.L3.Limbic_R", 
-                 "Type2.L3.Occipital_L", "Type2.L3.Occipital_R",
-                 "ventricular_csf", "brainstem_cerebellum")
+                 "Type2.L3.Occipital_L", "Type2.L3.Occipital_R")#,
+                 # "ventricular_csf", "brainstem_cerebellum")
 
 # process data
 brain_vol <- brain_vol_raw |> 
@@ -66,16 +67,30 @@ brain_vol <- brain_vol_raw |>
   mutate(
     across(
       .cols = any_of(c(sub_regions, brain_regions)),
-      ~ scale(.x) |> as.vector(),
+      ~ scale(.x) |> as.vector(), # scale by default will center (mean = 0) and scale (sd = 1)
       .names = "{.col}_scaled"
     )
   ) |>
   ## to tease out total size differences, convert from volume to proportion of total volume ##
+  ## update: convert volume to proportion of total hemisphere volume ##
   dplyr::mutate(
-    Total.Volume = rowSums(dplyr::across(.cols = c(Type2.L3.Frontal_L:brainstem_cerebellum))),
+    # Total.Volume = rowSums(dplyr::across(.cols = c(Type2.L3.Frontal_L:brainstem_cerebellum))),
     dplyr::across(
-      .cols = c(Type2.L3.Frontal_L:brainstem_cerebellum),
-      ~ .x / Total.Volume,
+      .cols = c(Type2.L3.Frontal_L, Type2.L3.Parietal_L, Type2.L3.Occipital_L,
+                Type2.L3.Temporal_L, Type2.L3.Limbic_L),
+      ~ .x / mori_total_l1_hemisphere_l,
+      .names = "{.col}_prop"
+    ),
+    dplyr::across(
+      .cols = c(Type2.L3.Frontal_R, Type2.L3.Parietal_R, Type2.L3.Occipital_R,
+                Type2.L3.Temporal_R, Type2.L3.Limbic_R),
+      ~ .x / mori_total_l1_hemisphere_r,
+      .names = "{.col}_prop"
+    ),
+    dplyr::across(
+      .cols = c(Frontal, Parietal, Occipital,
+                Temporal, Limbic),
+      ~ .x / mori_total_l1_total_volume,
       .names = "{.col}_prop"
     )
   )
@@ -102,6 +117,24 @@ brain_vol_prop_wide <- brain_vol |>
     if_all(.cols = contains("prop"), ~ !is.na(.x))
   )
 
+# retain NA to test kml3d imputation methods
+brain_vol_wide_nas <- brain_vol |>
+  dplyr::select(subj_id, visit, contains("scaled")) |>
+  reshape(
+    idvar = "subj_id", timevar = "visit", direction = "wide", sep = "_"
+  )
+
+brain_vol_prop_wide_nas <- brain_vol |>
+  dplyr::mutate(
+    n = dplyr::n(),
+    .by = subj_id
+  ) |>
+  dplyr::filter(n > 1) |>
+  dplyr::select(subj_id, visit, contains("prop")) |>
+  reshape(
+    idvar = "subj_id", timevar = "visit", direction = "wide", sep = "_"
+  ) 
+
 
 ## NOTE: k-means requires complete data -> impute? ##
 set.seed(61724)
@@ -112,7 +145,17 @@ set.seed(61724)
 # store vector of analytic brain regions
 scaled_regions <- paste(brain_regions, "_scaled", sep = "")
 scaled_sub_regions <- paste(sub_regions, "_scaled", sep = "")
+prop_vol_regions <- paste0(brain_regions, "_prop")
 prop_vol_sub_regions <- paste0(sub_regions, "_prop")
 
 ## save data
+saveRDS(brain_vol_raw, "./data-ext/brain_vol_raw_20241219.rds")
 saveRDS(brain_vol, "./data-ext/brain_vol_long_20241219.rds")
+saveRDS(brain_vol_wide, "./data-ext/brain_vol_wide_20241219.rds")
+saveRDS(brain_vol_prop_wide, "./data-ext/brain_vol_prop_wide_20241219.rds")
+saveRDS(brain_vol_wide_nas, "./data-ext/brain_vol_wide_nas_20241219.rds")
+saveRDS(brain_vol_prop_wide_nas, "./data-ext/brain_vol_prop_wide_nas_20241219.rds")
+
+## save variable vectors
+saveRDS(prop_vol_regions, "./data-ext/prop_vol_regions.rds")
+saveRDS(prop_vol_sub_regions, "./data-ext/prop_vol_sub_regions.rds")

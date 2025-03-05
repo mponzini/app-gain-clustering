@@ -5,10 +5,9 @@ pacman::p_load(lcmm, ggplot2)
 # using all scaled brain regions #
 # fit lcmm with K = 1 to obtain initial values
 lcmm_k1 <- lcmm::multlcmm(
-  Type2.L3.Frontal_L + Type2.L3.Frontal_R + Type2.L3.Parietal_L + 
-    Type2.L3.Parietal_R + Type2.L3.Temporal_L + Type2.L3.Temporal_R + 
-    Type2.L3.Limbic_L + Type2.L3.Limbic_R + Type2.L3.Occipital_L + 
-    Type2.L3.Occipital_R + ventricular_csf + brainstem_cerebellum ~ scan_age,
+  Type2.L3.Frontal_L_prop + Type2.L3.Frontal_R_prop + Type2.L3.Parietal_L_prop + 
+    Type2.L3.Parietal_R_prop + Type2.L3.Temporal_L_prop + Type2.L3.Temporal_R_prop + 
+    Type2.L3.Occipital_L_prop + Type2.L3.Occipital_R_prop ~ scan_age,
   random = ~ scan_age,
   subject = 'subj_id_numeric',
   data = brain_vol,

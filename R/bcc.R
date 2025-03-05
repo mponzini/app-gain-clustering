@@ -2,7 +2,8 @@
 pacman::p_load(BCClong, ggplot2)
 # source data prep file
 # source("./R/data_prep.R")
-brain_vol <- readRDS("./data-ext/brain_vol_long_20240919.rds")
+brain_vol <- readRDS("./data-ext/brain_vol_long_20241219.rds")
+
 # set seed
 set.seed(61824)
 
@@ -14,17 +15,17 @@ fit_k2_k4 <- vector(mode = 'list', length = 3)
 for(k in 2:4){
   fit <- BCClong::BCC.multi(
     mydat = list(
-      brain_vol$Frontal_scaled,
-      brain_vol$Parietal_scaled,
-      brain_vol$Temporal_scaled,
-      brain_vol$Occipital_scaled
+      brain_vol$Frontal_prop,
+      brain_vol$Parietal_prop,
+      brain_vol$Temporal_prop,
+      brain_vol$Occipital_prop
     ),
     dist = c("gaussian"),
     id = list(
       brain_vol$subj_id_numeric
     ),
     time = list(
-      brain_vol$scan_age
+      brain_vol$visit
     ),
     formula = list(
       y ~ time + (1|id)
@@ -65,21 +66,21 @@ set.seed(7915)
 for(k in 2:4){
   fit <- BCClong::BCC.multi(
     mydat = list(
-      brain_vol$Type2.L3.Frontal_L_scaled,
-      brain_vol$Type2.L3.Frontal_R_scaled,
-      brain_vol$Type2.L3.Parietal_L_scaled,
-      brain_vol$Type2.L3.Parietal_R_scaled,
-      brain_vol$Type2.L3.Temporal_L_scaled,
-      brain_vol$Type2.L3.Temporal_R_scaled,
-      brain_vol$Type2.L3.Occipital_L_scaled,
-      brain_vol$Type2.L3.Occipital_R_scaled
+      brain_vol$Type2.L3.Frontal_L_prop,
+      brain_vol$Type2.L3.Frontal_R_prop,
+      brain_vol$Type2.L3.Parietal_L_prop,
+      brain_vol$Type2.L3.Parietal_R_prop,
+      brain_vol$Type2.L3.Temporal_L_prop,
+      brain_vol$Type2.L3.Temporal_R_prop,
+      brain_vol$Type2.L3.Occipital_L_prop,
+      brain_vol$Type2.L3.Occipital_R_prop
     ),
     dist = c("gaussian"),
     id = list(
       brain_vol$subj_id_numeric
     ),
     time = list(
-      brain_vol$scan_age
+      brain_vol$visit
     ),
     formula = list(
       y ~ time + (1|id)
