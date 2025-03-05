@@ -25,7 +25,7 @@ for(k in 2:4){
       brain_vol$subj_id_numeric
     ),
     time = list(
-      brain_vol$scan_age
+      brain_vol$visit
     ),
     formula = list(
       y ~ time + (1|id)
@@ -80,7 +80,7 @@ for(k in 2:4){
       brain_vol$subj_id_numeric
     ),
     time = list(
-      brain_vol$scan_age
+      brain_vol$visit
     ),
     formula = list(
       y ~ time + (1|id)
