@@ -140,6 +140,7 @@ plot_kmean_feature <- function(
       y = var_label
     ) +
     scale_x_continuous(breaks = c(1, 2, 3)) +
+    scale_y_continuous(expand = expansion(mult = 0.25)) +
     guides(
       color = guide_legend(title = "Cluster"),
       fill = guide_legend(title = "Cluster"),

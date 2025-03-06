@@ -64,6 +64,16 @@ internal <- FALSE
 #   information
 source("../R/kmeans_helpers.R")
 # import data and results #
+brain_regions <- c(
+  "Type2.L3.Frontal_L_prop", 
+  "Type2.L3.Frontal_R_prop", 
+  "Type2.L3.Parietal_L_prop", 
+  "Type2.L3.Parietal_R_prop",
+  "Type2.L3.Occipital_L_prop", 
+  "Type2.L3.Occipital_R_prop", 
+  "Type2.L3.Temporal_L_prop", 
+  "Type2.L3.Temporal_R_prop"
+)
 # data
 brain_vol <- readRDS(file = "./data-ext/brain_vol_long_20241219.rds")
 brain_vol_wide <- readRDS(file = "./data-ext/brain_vol_prop_wide_20241219.rds")
@@ -74,6 +84,7 @@ lcmm_k4 <- readRDS(file = "./data-ext/lcmm_k4_visit_proportions.rds")
 # bcc results
 bcc_fits <- readRDS(file = "./data-ext/bcc_models_k2-4_hemispheres.rds")
 # kmeans results
+set.seed(649)
 kml_fit <- kmeans_clusters(dataset = brain_vol_wide)
 ```
 
@@ -174,7 +185,8 @@ brain_lcmm_long <- brain_vol |>
 lcmm_cluster_volumes <- brain_lcmm_long |> 
   ggplot() +
   aes(x = factor(visit), y = volume, color = cluster, group = cluster) +
-  geom_smooth(method = "loess", se = FALSE) +
+  geom_smooth(method = "loess", se = FALSE, span = 1.5, linewidth = 2.5) +
+  scale_y_continuous(expand = expansion(mult = 0.25)) +
   guides(color = guide_legend(title = "Cluster")) +
   facet_wrap(~region, scales = "free", ncol = 2) +
   labs(x = "Visit", y = "Proportional Volume") +
@@ -189,7 +201,7 @@ lcmm_cluster_volumes <- brain_lcmm_long |>
 lcmm_plot
 ```
 
-```{r, fig.height = 12, fig.width=8}
+```{r, fig.height = 12, fig.width=8, warning=FALSE, message=FALSE}
 lcmm_cluster_volumes
 ```
 
@@ -223,7 +235,17 @@ dat1_uq$post_prob <- bcc_fits[[bcc_k]]$postprob
 
 # K-Means Multivariate Longitudinal Clustering (KML)
 
-```{r kml, include=internal}
+```{r}
+kml_data <- brain_vol |> 
+  dplyr::left_join(
+    x = _,
+    y = kml_fit |> dplyr::select(subj_id, cluster),
+    by = "subj_id"
+  ) |> 
+  dplyr::filter(!is.na(cluster))
+```
+
+```{r kml-number-cluster, include=internal}
 kml_bic <- data.frame(
   Cluster = 2:5,
   BIC = attr(kml_fit, "BIC")
@@ -237,6 +259,24 @@ kml_bic |>
   theme_bw()
 ```
 
+```{r, warning=FALSE, message=FALSE}
+kml_feature_plots <- lapply(
+  brain_regions,
+  function(x) plot_kmean_feature(data = kml_data, var = x)
+)
+```
+
+```{r, fig.height = 10, fig.width = 10}
+cowplot::plot_grid(
+  plotlist = kml_feature_plots[1:4]
+)
+```
+
+```{r, fig.height = 10, fig.width = 10}
+cowplot::plot_grid(
+  plotlist = kml_feature_plots[5:8]
+)
+```
 
 # Compare Cluster Assignments
 
