@@ -1,7 +1,7 @@
 ## functions to help with K-Means ##
 # select number of clusters
 kmeans_clusters <- function(
-    dataset, id_var = "subj_id_numeric", k_min = 2, k_max = 5, 
+    dataset, id_var = "subj_id", k_min = 2, k_max = 5, 
     regions = c(
       "Type2.L3.Frontal_L_prop", "Type2.L3.Frontal_R_prop", 
       "Type2.L3.Parietal_L_prop", "Type2.L3.Parietal_R_prop", 
@@ -10,6 +10,36 @@ kmeans_clusters <- function(
       "Type2.L3.Occipital_L_prop", "Type2.L3.Occipital_R_prop"
     )
 ) {
+  
+  dataset <- dataset |> 
+    dplyr::select(
+      dplyr::all_of(id_var),
+      Type2.L3.Frontal_L_prop_1,
+      Type2.L3.Frontal_L_prop_2,
+      Type2.L3.Frontal_L_prop_3,
+      Type2.L3.Parietal_L_prop_1,
+      Type2.L3.Parietal_L_prop_2,
+      Type2.L3.Parietal_L_prop_3,
+      Type2.L3.Temporal_L_prop_1,
+      Type2.L3.Temporal_L_prop_2,
+      Type2.L3.Temporal_L_prop_3,
+      Type2.L3.Occipital_L_prop_1,
+      Type2.L3.Occipital_L_prop_2,
+      Type2.L3.Occipital_L_prop_3,
+      Type2.L3.Frontal_R_prop_1,
+      Type2.L3.Frontal_R_prop_2,
+      Type2.L3.Frontal_R_prop_3,
+      Type2.L3.Parietal_R_prop_1,
+      Type2.L3.Parietal_R_prop_2,
+      Type2.L3.Parietal_R_prop_3,
+      Type2.L3.Temporal_R_prop_1,
+      Type2.L3.Temporal_R_prop_2,
+      Type2.L3.Temporal_R_prop_3,
+      Type2.L3.Occipital_R_prop_1,
+      Type2.L3.Occipital_R_prop_2,
+      Type2.L3.Occipital_R_prop_3
+    )
+  
   # fit model
   kmean_test <<- kml3d::cld3d(
     traj = dataset,
@@ -20,10 +50,10 @@ kmeans_clusters <- function(
       Parietal_L = c(5:7),
       Temproal_L = c(8:10),
       Occipital_L = c(11:13),
-      Frontal_R = c(17:19),
-      Parietal_R = c(20:22),
-      Temproal_R = c(23:25),
-      Occipital_R = c(26:28)
+      Frontal_R = c(14:16),
+      Parietal_R = c(17:19),
+      Temproal_R = c(20:22),
+      Occipital_R = c(23:25)
     ),
     varNames = regions[c(1, 3, 5, 9, 2, 4, 6, 10)]
   )
@@ -72,7 +102,12 @@ kmeans_clusters <- function(
     sort = FALSE
   )
   
-  return(dataset_cluster)
+  ans <- dataset_cluster |> 
+    structure(
+      BIC = BIC
+    )
+  
+  return(ans)
   
 }
 
