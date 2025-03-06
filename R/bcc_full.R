@@ -222,10 +222,12 @@ fit_bcc <- BCClong::BCC.multi(
     fit_occipital_l$cluster.global |> as.numeric(),
     fit_occipital_r$cluster.global |> as.numeric()
   ),
-  input.initial.global.cluster.membership = fit_frontal_l$cluster.global |> as.numeric()
+  input.initial.global.cluster.membership = fit_frontal_l$cluster.global |> as.numeric(),
   center = 0,
   burn.in = 10000,
   thin = 10,
   per = 10000,
   max.iter = 20000
 )
+
+saveRDS(fit_bcc, file = "./data-ext/bcc_final_model.rds")

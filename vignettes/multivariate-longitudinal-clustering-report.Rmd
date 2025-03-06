@@ -7,6 +7,8 @@ output:
     toc: TRUE
     toc_float: TRUE
     toc_depth: 3
+editor_options: 
+  chunk_output_type: console
 ---
 
 <style type="text/css">
@@ -75,14 +77,15 @@ brain_regions <- c(
   "Type2.L3.Temporal_R_prop"
 )
 # data
-brain_vol <- readRDS(file = "./data-ext/brain_vol_long_20241219.rds")
-brain_vol_wide <- readRDS(file = "./data-ext/brain_vol_prop_wide_20241219.rds")
+brain_vol <- readRDS(file = "../data-ext/brain_vol_long_20241219.rds")
+brain_vol_wide <- readRDS(file = "../data-ext/brain_vol_prop_wide_20241219.rds")
 # lcmm results
-lcmm_k2 <- readRDS(file = "./data-ext/lcmm_k2_visit_proportions.rds")
-lcmm_k3 <- readRDS(file = "./data-ext/lcmm_k3_visit_proportions.rds")
-lcmm_k4 <- readRDS(file = "./data-ext/lcmm_k4_visit_proportions.rds")
+lcmm_k2 <- readRDS(file = "../data-ext/lcmm_k2_visit_proportions.rds")
+lcmm_k3 <- readRDS(file = "../data-ext/lcmm_k3_visit_proportions.rds")
+lcmm_k4 <- readRDS(file = "../data-ext/lcmm_k4_visit_proportions.rds")
 # bcc results
-bcc_fits <- readRDS(file = "./data-ext/bcc_models_k2-4_hemispheres.rds")
+bcc_fits <- readRDS(file = "../data-ext/bcc_models_k2-4_hemispheres.rds")
+bcc_final <- readRDS(file = "../data-ext/bcc_final_model.rds")
 # kmeans results
 set.seed(649)
 kml_fit <- kmeans_clusters(dataset = brain_vol_wide)
@@ -123,8 +126,7 @@ lcmm_plot <- ggplot(
   ggtitle("Latent Class Mixed Model") +
   xlab("Clusters") + 
   ylab("Posterior Cluster Probability") +
-  ylim(c(0,1)) +
-  scale_y_continuous(label = scales::percent) +
+  scale_y_continuous(label = scales::percent, limits = c(0, 1)) +
   theme_bw() +
   theme(
     legend.position = "none",
@@ -201,16 +203,89 @@ lcmm_cluster_volumes <- brain_lcmm_long |>
 lcmm_plot
 ```
 
-```{r, fig.height = 12, fig.width=8, warning=FALSE, message=FALSE}
+```{r, fig.height = 12, fig.width=10, warning=FALSE, message=FALSE}
 lcmm_cluster_volumes
 ```
 
 # Bayesian Consensus Clustering (BCC)
 
-```{r bcc-number-k, include=internal}
+```{r bcc, include=internal}
+# optimal number of clusters
 alpha_adjust <- lapply(bcc_fits, function(x) x$alpha.adjust) |>  unlist()
 bcc_k <- which.max(alpha_adjust) + 1
 
+# extract clusters and posterior probability from final model
+bcc_dat <- bcc_final$dat
+bcc_dat_uq <- bcc_dat[[1]][!duplicated(bcc_dat[[1]]$id.org, fromLast = TRUE), ]
+bcc_dat_uq$post_prob <- bcc_final$postprob
+
+bcc_n <- brain_vol |> dplyr::pull(subj_id_numeric) |> unique() |> length()
+bcc_per <- paste(round(100*table(bcc_dat_uq$cluster.global)/bcc_n,1),"%",sep="")
+
+bcc_cluster_labels <- factor(
+  bcc_dat_uq$cluster.global, 
+  label = glue::glue(
+    "Cluster {1:bcc_k} ({bcc_per})"
+  )
+)
+
+bcc_cluster <- brain_vol |> 
+  dplyr::left_join(
+    x = _,
+    y = data.frame(
+      subj_id_numeric = bcc_dat_uq$id.org,
+      cluster = bcc_cluster_labels
+    ),
+    by = "subj_id_numeric"
+)
+
+bcc_cluster_long <- bcc_cluster |> 
+  dplyr::select(
+    subj_id_numeric, visit, cluster, 
+    Type2.L3.Frontal_L_prop, Type2.L3.Frontal_R_prop, 
+    Type2.L3.Parietal_L_prop, Type2.L3.Parietal_R_prop,
+    Type2.L3.Occipital_L_prop, Type2.L3.Occipital_R_prop, 
+    Type2.L3.Temporal_L_prop, Type2.L3.Temporal_R_prop
+  ) |>
+  tidyr::pivot_longer(
+    cols = c(
+      Type2.L3.Frontal_L_prop, Type2.L3.Frontal_R_prop, 
+      Type2.L3.Parietal_L_prop, Type2.L3.Parietal_R_prop,
+      Type2.L3.Occipital_L_prop, Type2.L3.Occipital_R_prop, 
+      Type2.L3.Temporal_L_prop, Type2.L3.Temporal_R_prop
+    ),
+    values_to = "volume",
+    names_to = "region"
+  ) |> 
+  dplyr::mutate(
+    region = dplyr::case_when(
+      region == "Type2.L3.Frontal_L_prop" ~ "Frontal, Left", 
+      region == "Type2.L3.Frontal_R_prop" ~ "Frontal, Right", 
+      region == "Type2.L3.Parietal_L_prop" ~ "Parietal, Left", 
+      region == "Type2.L3.Parietal_R_prop" ~ "Parietal, Right",
+      region == "Type2.L3.Occipital_L_prop" ~ "Occipital, Left", 
+      region == "Type2.L3.Occipital_R_prop" ~ "Occipital, Right", 
+      region == "Type2.L3.Temporal_L_prop" ~ "Temporal, Left", 
+      region == "Type2.L3.Temporal_R_prop" ~ "Temporal, Right"
+    )
+  )
+
+# plot region volumes by cluster
+bcc_cluster_volumes <- bcc_cluster_long |> 
+  ggplot() +
+  aes(x = factor(visit), y = volume, color = cluster, group = cluster) +
+  geom_smooth(method = "loess", se = FALSE, span = 1.5, linewidth = 2.5) +
+  scale_y_continuous(expand = expansion(mult = 0.25)) +
+  guides(color = guide_legend(title = "Cluster")) +
+  facet_wrap(~region, scales = "free", ncol = 2) +
+  labs(x = "Visit", y = "Proportional Volume") +
+  theme_bw() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+```{r bcc-number-k}
 data.frame(
   k = seq(2, 4, by = 1),
   `Adjusted Alpha` = alpha_adjust,
@@ -227,10 +302,23 @@ data.frame(
   )
 ```
 
-```{r bcc-post-prob, include=internal}
-dat <- bcc_fits[[bcc_k]]$dat
-dat1_uq <- dat[[1]][!duplicated(dat[[1]]$id.org, fromLast = TRUE), ]
-dat1_uq$post_prob <- bcc_fits[[bcc_k]]$postprob
+```{r bcc-post-prob}
+bcc_dat_uq |> 
+  ggplot() +
+  aes(
+    x = factor(cluster.global), y = post_prob
+  ) +
+  geom_boxplot() +
+  labs(
+    x = "Cluster", y = "Posterior Cluster Probability", 
+    title = "Bayesian Consensus Clustering"
+  ) +
+  scale_y_continuous(labels = scales::percent) +
+  theme_bw()
+```
+
+```{r bcc-cluster-vol, fig.height = 12, fig.width=10, warning=FALSE, message=FALSE}
+bcc_cluster_volumes
 ```
 
 # K-Means Multivariate Longitudinal Clustering (KML)
@@ -243,9 +331,21 @@ kml_data <- brain_vol |>
     by = "subj_id"
   ) |> 
   dplyr::filter(!is.na(cluster))
+
+# separate version without cluster label
+kml_clusters <- kml_data |> 
+  dplyr::select(subj_id_numeric, cluster) |> 
+  dplyr::mutate(
+    kml_cluster = dplyr::case_when(
+      cluster == "Cluster 1 (57.6%)" ~ 1,
+      cluster == "Cluster 2 (42.4%)" ~ 2
+    )
+  ) |> 
+  dplyr::select(-cluster) |> 
+  unique()
 ```
 
-```{r kml-number-cluster, include=internal}
+```{r kml-number-cluster}
 kml_bic <- data.frame(
   Cluster = 2:5,
   BIC = attr(kml_fit, "BIC")
@@ -286,12 +386,146 @@ brain_clusters <- brain_lcmm_uq |>
   dplyr::rename(lcmm_cluster = cluster) |> 
   dplyr::left_join(
     x = _,
-    y = ,
+    y = data.frame(
+      subj_id_numeric = bcc_dat_uq$id.org,
+      bcc_cluster = bcc_dat_uq$cluster.global
+    ),
     by = "subj_id_numeric"
   ) |> 
   dplyr::left_join(
     x = _,
-    y = ,
+    y = kml_clusters,
     by = "subj_id_numeric"
   )
+
+brain_clusters_vol <- brain_vol |> 
+  dplyr::left_join(
+    x = _,
+    y = brain_clusters,
+    by = "subj_id_numeric"
+  )
+```
+
+```{r}
+# compare cluster assignment
+lcmm_vs_bcc <- gtsummary::tbl_cross(
+  brain_clusters, row = lcmm_cluster, col = bcc_cluster,
+  label = list(lcmm_cluster = "LCMM", bcc_cluster = "BCC")
+) |> 
+  gtsummary::bold_labels()
+
+lcmm_vs_kml <- gtsummary::tbl_cross(
+  brain_clusters, row = lcmm_cluster, col = kml_cluster,
+  label = list(lcmm_cluster = "LCMM", kml_cluster = "KML")
+) |> 
+  gtsummary::bold_labels()
+
+bcc_vs_kml <- gtsummary::tbl_cross(
+  brain_clusters, row = bcc_cluster, col = kml_cluster,
+  label = list(bcc_cluster = "BCC", kml_cluster = "KML")
+) |> 
+  gtsummary::bold_labels()
+
+# summary of volumes by cluster assignment
+lcmm_cluster_vols <- brain_clusters_vol |> 
+  gtsummary::tbl_strata(
+    strata = lcmm_cluster,
+    .tbl_fun = ~ .x |> 
+      gtsummary::tbl_summary(
+        by = visit,
+        type = where(is.numeric) ~ "continuous2",
+        statistic = gtsummary::all_continuous2() ~ c("{median} ({p25}, {p75})",
+                                                     "{min} - {max}"),
+        include = dplyr::all_of(brain_regions),
+        label = list(
+          "Type2.L3.Frontal_L_prop" = "Frontal, Left", 
+          "Type2.L3.Frontal_R_prop" = "Frontal, Right", 
+          "Type2.L3.Parietal_L_prop" = "Parietal, Left", 
+          "Type2.L3.Parietal_R_prop" = "Parietal, Right",
+          "Type2.L3.Occipital_L_prop" = "Occipital, Left", 
+          "Type2.L3.Occipital_R_prop" = "Occipital, Right", 
+          "Type2.L3.Temporal_L_prop" = "Temporal, Left", 
+          "Type2.L3.Temporal_R_prop" = "Temporal, Right"
+        )
+      )
+  ) |> 
+  gtsummary::modify_caption(
+    caption = "Proportional brain volumes over time by LCMM cluster assignment"
+  )
+
+bcc_cluster_vols <- brain_clusters_vol |> 
+  gtsummary::tbl_strata(
+    strata = bcc_cluster,
+    .tbl_fun = ~ .x |> 
+      gtsummary::tbl_summary(
+        by = visit,
+        type = where(is.numeric) ~ "continuous2",
+        statistic = gtsummary::all_continuous2() ~ c("{median} ({p25}, {p75})",
+                                                     "{min} - {max}"),
+        include = dplyr::all_of(brain_regions),
+        label = list(
+          "Type2.L3.Frontal_L_prop" = "Frontal, Left", 
+          "Type2.L3.Frontal_R_prop" = "Frontal, Right", 
+          "Type2.L3.Parietal_L_prop" = "Parietal, Left", 
+          "Type2.L3.Parietal_R_prop" = "Parietal, Right",
+          "Type2.L3.Occipital_L_prop" = "Occipital, Left", 
+          "Type2.L3.Occipital_R_prop" = "Occipital, Right", 
+          "Type2.L3.Temporal_L_prop" = "Temporal, Left", 
+          "Type2.L3.Temporal_R_prop" = "Temporal, Right"
+        )
+      )
+  ) |> 
+  gtsummary::modify_caption(
+    caption = "Proportional brain volumes over time by BCC cluster assignment"
+  )
+
+kml_cluster_vols <- brain_clusters_vol |> 
+  gtsummary::tbl_strata(
+    strata = kml_cluster,
+    .tbl_fun = ~ .x |> 
+      gtsummary::tbl_summary(
+        by = visit,
+        type = where(is.numeric) ~ "continuous2",
+        statistic = gtsummary::all_continuous2() ~ c("{median} ({p25}, {p75})",
+                                                     "{min} - {max}"),
+        include = dplyr::all_of(brain_regions),
+        label = list(
+          "Type2.L3.Frontal_L_prop" = "Frontal, Left", 
+          "Type2.L3.Frontal_R_prop" = "Frontal, Right", 
+          "Type2.L3.Parietal_L_prop" = "Parietal, Left", 
+          "Type2.L3.Parietal_R_prop" = "Parietal, Right",
+          "Type2.L3.Occipital_L_prop" = "Occipital, Left", 
+          "Type2.L3.Occipital_R_prop" = "Occipital, Right", 
+          "Type2.L3.Temporal_L_prop" = "Temporal, Left", 
+          "Type2.L3.Temporal_R_prop" = "Temporal, Right"
+        )
+      )
+  ) |> 
+  gtsummary::modify_caption(
+    caption = "Proportional brain volumes over time by KML cluster assignment"
+  )
+```
+
+```{r}
+lcmm_vs_bcc
+```
+
+```{r}
+lcmm_vs_kml
+```
+
+```{r}
+bcc_vs_kml
+```
+
+```{r}
+lcmm_cluster_vols
+```
+
+```{r}
+bcc_cluster_vols
+```
+
+```{r}
+kml_cluster_vols
 ```
